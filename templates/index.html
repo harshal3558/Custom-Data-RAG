@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Document Assistant | RAG System</title>
+
+    <!-- Static CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+
+<body>
+    <div class="glass-container">
+        <header>
+            <div class="logo">
+                <i class="fa-solid fa-brain-circuit"></i>
+                <h1>Custom <span class="gradient-text">RAG</span> Assistant</h1>
+            </div>
+            <p class="subtitle">Upload a PDF and talk to your data in seconds.</p>
+        </header>
+
+        <main>
+            <!-- Upload Section -->
+            <section id="upload-section">
+                <div class="card upload-card">
+                    <div class="upload-icon">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </div>
+                    <h2>Upload your PDF</h2>
+                    <p>Start by providing a document for context.</p>
+                    <div class="drop-zone" id="drop-zone">
+                        <input type="file" id="file-input" hidden accept=".pdf">
+                        <p id="file-name-display">Drag & Drop or <span>Browse</span></p>
+                    </div>
+                    <button class="btn btn-primary" id="upload-btn">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Index Document
+                    </button>
+                    <div id="upload-status" class="status-message"></div>
+                </div>
+            </section>
+
+            <!-- Chat Section -->
+            <section id="chat-section" class="hidden">
+                <div class="card chat-card">
+                    <div class="chat-header">
+                        <span class="status-indicator"></span>
+                        <h3>Conversational Query</h3>
+                    </div>
+                    <div class="chat-box" id="chat-box">
+                        <div class="message bot-message">
+                            Successfully indexed your document! Go ahead, ask me anything about it.
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="user-query" placeholder="Enter your question here..." />
+                        <button class="btn btn-send" id="send-btn">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2026 Custom RAG Powered by Groq & ChromaDB</p>
+        </footer>
+    </div>
+
+    <script>
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const uploadBtn = document.getElementById('upload-btn');
+        const uploadSection = document.getElementById('upload-section');
+        const chatSection = document.getElementById('chat-section');
+        const chatBox = document.getElementById('chat-box');
+        const userQueryInput = document.getElementById('user-query');
+        const sendBtn = document.getElementById('send-btn');
+        const statusMsg = document.getElementById('upload-status');
+
+        let selectedFile = null;
+
+        dropZone.onclick = () => fileInput.click();
+
+        fileInput.onchange = (e) => {
+            selectedFile = e.target.files[0];
+            if (selectedFile) {
+                document.getElementById('file-name-display').innerText = selectedFile.name;
+            }
+        };
+
+        uploadBtn.onclick = async () => {
+            if (!selectedFile) {
+                statusMsg.innerText = "Please select a file first.";
+                statusMsg.style.color = "#ff4d4d";
+                return;
+            }
+
+            statusMsg.innerText = "Indexing document... Please wait.";
+            statusMsg.style.color = "#6c5ce7";
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    uploadSection.classList.add('fade-out');
+                    setTimeout(() => {
+                        uploadSection.style.display = 'none';
+                        chatSection.classList.remove('hidden');
+                        chatSection.classList.add('fade-in');
+                    }, 300);
+                } else {
+                    statusMsg.innerText = "Indexing failed: " + result.error;
+                }
+            } catch (err) {
+                statusMsg.innerText = "An error occurred: " + err.message;
+            }
+        };
+
+        const sendMessage = async () => {
+            const query = userQueryInput.value.trim();
+            if (!query) return;
+
+            appendMessage(query, 'user-message');
+            userQueryInput.value = '';
+
+            const loadingMsgId = appendMessage('...', 'bot-message loading');
+
+            try {
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+
+                const result = await response.json();
+
+                const loadingMsg = document.getElementById(loadingMsgId);
+                loadingMsg.innerHTML = (result.answer || result.error || "No response").replace(/\n/g, '<br>');
+                loadingMsg.classList.remove('loading');
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } catch (err) {
+                appendMessage("Sorry, I encountered an error: " + err.message, 'bot-message');
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+        };
+
+        const appendMessage = (text, className) => {
+            const msgId = 'msg-' + Date.now() + Math.floor(Math.random() * 1000);
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'message ' + className;
+            msgDiv.id = msgId;
+            msgDiv.innerHTML = text.replace(/\n/g, '<br>');
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return msgId;
+        };
+
+        sendBtn.onclick = sendMessage;
+        userQueryInput.onkeypress = (e) => {
+            if (e.key === 'Enter') sendMessage();
+        };
+    </script>
+</body>
+
+</html>
