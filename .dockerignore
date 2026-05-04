@@ -1,0 +1,12 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.db
+.env
+cragenv
+logs
+data/uploads/*
+notebook
+CDRAG.egg-info

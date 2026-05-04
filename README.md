@@ -6,6 +6,7 @@
 ![Groq](https://img.shields.io/badge/Groq-Llama3--70B-orange)
 ![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector%20Store-blue)
 ![MLflow](https://img.shields.io/badge/MLflow-Tracking-0194E2?logo=mlflow&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Enabled-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 A state-of-the-art **Retrieval-Augmented Generation (RAG)** application designed to transform static PDF documents into interactive knowledge bases. By combining the speed of **Groq Cloud (Llama-3)** with the modularity of **LangChain**, this system provides accurate, context-aware answers in milliseconds.
@@ -20,6 +21,7 @@ A state-of-the-art **Retrieval-Augmented Generation (RAG)** application designed
 - [📈 Monitoring & Tracking](#-monitoring--tracking)
 - [🚀 Getting Started](#-getting-started)
   - [Prerequisites](#prerequisites)
+  - [Docker Installation (Easiest)](#docker-installation-easiest)
   - [Local Installation](#local-installation)
 - [🔌 API Endpoints](#-api-endpoints)
 - [🤝 Contributing](#-contributing)
@@ -42,6 +44,7 @@ Whether you're processing technical manuals (like `DogTraining101.pdf` included 
 - **Hybrid Search Capabilities**: Fine-tuned retrieval logic with **Sentence-Transformers** for high semantic accuracy.
 - **Experiment Monitoring**: Fully integrated with **MLflow** to track ingestion metrics and LLM performance.
 - **Clean UI**: A responsive Flask-driven frontend for seamless document interaction.
+- **Dockerized Deployment**: Fully containerized for consistent deployment across environments.
 
 ---
 
@@ -55,6 +58,7 @@ Whether you're processing technical manuals (like `DogTraining101.pdf` included 
 | **Vector DB** | ChromaDB (Persistent) |
 | **Document Processing** | PyMuPDF (Fitz), PyPDF |
 | **Observability** | MLflow, DagsHub |
+| **DevOps** | Docker, Docker Compose |
 | **Logging & Stats** | NumPy, Custom Exception & Logger |
 
 ---
@@ -64,6 +68,8 @@ Whether you're processing technical manuals (like `DogTraining101.pdf` included 
 ```text
 Custom_RAG/
 ├── app.py                  # Flask Web Application entry point
+├── Dockerfile              # Docker container definition
+├── docker-compose.yml       # Multi-container orchestration
 ├── src/                    # Source Directory
 │   ├── components/         # Modular pipeline components
 │   │   ├── data_ingestion.py    # PDF loading and chunking
@@ -85,13 +91,30 @@ Custom_RAG/
 
 ---
 
-## 📈 Monitoring & Tracking
+---
+
+## 📈 Monitoring & Evaluation Metrics
 
 This project implements **MLflow** for rigorous tracking of both data processing and inference quality.
 
-**Components Tracked:**
-- **Indexing Pipeline**: Logs `chunk_size`, `model_name`, and `num_chunks` to evaluate indexing efficiency.
-- **Inference Monitoring**: Captures `query`, `answer_length`, and `num_retrieved_docs` to monitor performance and context usage.
+### 🔍 Real-time Monitoring
+During inference, the system captures and logs the following metrics to MLflow:
+- **Latencies**: `retrieval_time_sec`, `llm_time_sec`, and `total_time_sec`.
+- **Quality**: `mean_retrieval_score` (cosine similarity of retrieved chunks).
+- **Efficiency**: `estimated_tokens` and `answer_length`.
+- **Context**: `num_retrieved_docs`.
+
+### 🧪 Offline Evaluation
+A dedicated evaluation script is provided to benchmark the RAG system performance using an LLM-as-a-judge:
+```bash
+python evaluate.py
+```
+This script runs a set of "Golden Questions" and evaluates the system on the following key metrics:
+- **Faithfulness**: Ensures the answer is derived strictly from the retrieved context without hallucinations.
+- **Relevancy**: Measures how well the generated answer addresses the user's query.
+- **Context Precision**: Evaluates the relevance of the retrieved context to the specific query.
+
+It also calculates average latencies and saves all results to `logs/evaluation_results.csv`.
 
 To view the dashboard after running queries:
 ```bash
@@ -103,9 +126,31 @@ mlflow ui
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Python 3.9+
+- Python 3.9+ (if running locally)
+- [Docker](https://www.docker.com/products/docker-desktop/) installed (if using Docker)
 - A [Groq API Key](https://console.groq.com/keys)
 - (Optional) DagsHub account for remote artifact tracking
+
+### Docker Installation (Easiest)
+
+1. **Clone the project**
+   ```bash
+   git clone https://github.com/harshal3558/Custom-Data-RAG.git
+   cd Custom_RAG
+   ```
+
+2. **Configure Environment Variables**
+   Create a `.env` file in the root:
+   ```env
+   GROQ_API_KEY=your_key_here
+   GROQ_MODEL_NAME=llama-3.3-70b-versatile
+   ```
+
+3. **Run with Docker Compose**
+   ```bash
+   docker-compose up --build
+   ```
+   Open `http://localhost:5000` in your browser.
 
 ### Local Installation
 
@@ -115,7 +160,7 @@ mlflow ui
    cd Custom_RAG
    ```
 
-2. **Create a Environment**
+2. **Create an Environment**
    ```bash
    # Windows
    python -m venv cragenv

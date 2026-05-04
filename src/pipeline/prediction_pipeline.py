@@ -70,6 +70,9 @@ class PredictionPipeline:
                 return "The document collection has not been initialized. Please upload and index a document."
             
             # Start MLflow run if possible
+            import time
+            start_time = time.time()
+            
             try:
                 active_run = mlflow.start_run()
                 mlflow.log_param("query", query)
@@ -77,16 +80,27 @@ class PredictionPipeline:
             except Exception:
                 active_run = None
 
+            # 1. Retrieval
+            retrieval_start = time.time()
             query_embedding = self.model.encode([query])[0]
             
             results = collection.query(
                 query_embeddings=[query_embedding.tolist()],
-                n_results=5
+                n_results=5,
+                include=['documents', 'distances']
             )
+            retrieval_end = time.time()
+            retrieval_duration = retrieval_end - retrieval_start
             
             contexts = results['documents'][0]
+            distances = results['distances'][0]
+            
+            # Convert distances to similarity scores (Cos Sim = 1 - Distance for cosine)
+            avg_score = 1 - (sum(distances) / len(distances)) if distances else 0
+            
             if not contexts:
                 answer = "I couldn't find any relevant information in the uploaded PDF to answer that."
+                llm_duration = 0
             else:
                 context_text = "\n\n".join(contexts)
                 
@@ -100,17 +114,31 @@ class PredictionPipeline:
                 Question: {question}
                 """)
                 
+                llm_start = time.time()
                 chain = prompt_template | self.llm
                 response = chain.invoke({"context": context_text, "question": query})
                 answer = response.content
+                llm_end = time.time()
+                llm_duration = llm_end - llm_start
             
+            total_duration = time.time() - start_time
+            
+            # Crude token estimation (4 chars per token average)
+            estimated_tokens = (len(context_text) + len(query) + len(answer)) // 4 if contexts else 0
+
             # Log metrics to MLflow if run was started
             if active_run:
                 try:
+                    mlflow.log_metric("retrieval_time_sec", retrieval_duration)
+                    mlflow.log_metric("llm_time_sec", llm_duration)
+                    mlflow.log_metric("total_time_sec", total_duration)
+                    mlflow.log_metric("mean_retrieval_score", avg_score)
                     mlflow.log_metric("answer_length", len(answer))
                     mlflow.log_metric("num_retrieved_docs", len(contexts))
+                    mlflow.log_metric("estimated_tokens", estimated_tokens)
                     mlflow.end_run()
-                except Exception:
+                except Exception as e:
+                    logging.warning(f"Failed to log metrics to MLflow: {e}")
                     pass
 
             return answer
