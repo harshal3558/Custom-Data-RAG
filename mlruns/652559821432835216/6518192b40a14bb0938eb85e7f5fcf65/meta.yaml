@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/6518192b40a14bb0938eb85e7f5fcf65/artifacts
+end_time: 1777897599551
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: 6518192b40a14bb0938eb85e7f5fcf65
+run_name: silent-sponge-512
+run_uuid: 6518192b40a14bb0938eb85e7f5fcf65
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777897598831
+status: 3
+tags: []
+user_id: harsh

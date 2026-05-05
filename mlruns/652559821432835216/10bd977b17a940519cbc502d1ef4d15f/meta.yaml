@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/10bd977b17a940519cbc502d1ef4d15f/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: 10bd977b17a940519cbc502d1ef4d15f
+run_name: angry-croc-784
+run_uuid: 10bd977b17a940519cbc502d1ef4d15f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777899422138
+status: 1
+tags: []
+user_id: harsh

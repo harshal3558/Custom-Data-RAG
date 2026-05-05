@@ -31,6 +31,11 @@ class DataIngestion:
 
             logging.info(f"Successfully loaded {len(documents)} pages from {pdf_file_path}")
 
+            # Add filename to metadata
+            filename = os.path.basename(pdf_file_path)
+            for doc in documents:
+                doc.metadata["source_file"] = filename
+
             text_splitter = RecursiveCharacterTextSplitter(
                 chunk_size=self.chunk_size,
                 chunk_overlap=self.chunk_overlap,

@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/8f9e2b8fb3b3492b86b74bf5b2c3dad7/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: 8f9e2b8fb3b3492b86b74bf5b2c3dad7
+run_name: calm-snail-346
+run_uuid: 8f9e2b8fb3b3492b86b74bf5b2c3dad7
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777899498368
+status: 1
+tags: []
+user_id: harsh

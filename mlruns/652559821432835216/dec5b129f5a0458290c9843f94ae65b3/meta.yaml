@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/dec5b129f5a0458290c9843f94ae65b3/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: dec5b129f5a0458290c9843f94ae65b3
+run_name: charming-mule-184
+run_uuid: dec5b129f5a0458290c9843f94ae65b3
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777899676439
+status: 1
+tags: []
+user_id: harsh

@@ -69,19 +69,39 @@ def get_answer():
     try:
         data = request.json
         user_query = data.get("query")
+        chat_history = data.get("history", []) # Get history from frontend
         
         if not user_query:
             return jsonify({"error": "No query provided"}), 400
         
         # Step 3: Prediction (Retrieval + LLM)
         prediction_pipeline = PredictionPipeline()
-        answer = prediction_pipeline.predict(user_query)
+        result = prediction_pipeline.predict(user_query, chat_history=chat_history)
         
-        return jsonify({"answer": answer})
+        return jsonify(result)
 
     except Exception as e:
         logging.error(f"Error in get_answer: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+@app.route('/reset', methods=['POST'])
+def reset_database():
+    try:
+        persist_directory = os.path.join('data', 'vector_store')
+        if os.path.exists(persist_directory):
+            import shutil
+            import chromadb
+            
+            # Try to close any open clients if possible
+            # (ChromaDB doesn't have a direct 'close all', but we can try to force delete)
+            shutil.rmtree(persist_directory)
+            logging.info("Vector store deleted successfully.")
+            return jsonify({"success": "Database cleared successfully! You can now upload fresh documents."})
+        else:
+            return jsonify({"success": "Database was already empty."})
+    except Exception as e:
+        logging.error(f"Error in reset_database: {str(e)}")
+        return jsonify({"error": f"Could not reset database: {str(e)}. It might be in use."}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

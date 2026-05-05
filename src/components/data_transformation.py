@@ -50,13 +50,8 @@ class DataTransformation:
                     settings=Settings(anonymized_telemetry=False)
                 )
                 
-                # Delete existing collection to ensure only the latest PDF is searchable
-                try:
-                    client.delete_collection(name=self.config.collection_name)
-                except Exception:
-                    pass
-
-                collection = client.create_collection(
+                # Get or create collection to allow multi-document indexing
+                collection = client.get_or_create_collection(
                     name=self.config.collection_name,
                     metadata={"hnsw:space": "cosine"},
                     embedding_function=None

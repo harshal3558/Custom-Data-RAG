@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/ba3cf3842bea43b09f0225551a309356/artifacts
+end_time: 1777897486059
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: ba3cf3842bea43b09f0225551a309356
+run_name: marvelous-crab-192
+run_uuid: ba3cf3842bea43b09f0225551a309356
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777897484515
+status: 3
+tags: []
+user_id: harsh

@@ -149,6 +149,20 @@ p {
     color: white;
 }
 
+.btn-outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: var(--text-gray);
+    font-size: 0.8rem;
+    margin-top: 10px;
+}
+
+.btn-outline:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ff4d4d;
+    border-color: #ff4d4d;
+}
+
 .btn-send {
     background: var(--primary-color);
     color: white;
@@ -211,6 +225,25 @@ p {
     background: rgba(255, 255, 255, 0.1);
     color: var(--text-light);
     align-self: flex-start;
+    text-align: left;
+    line-height: 1.5;
+}
+
+.markdown-content p {
+    margin-bottom: 10px;
+    color: var(--text-light);
+}
+
+.markdown-content ul, .markdown-content ol {
+    margin-left: 20px;
+    margin-bottom: 10px;
+}
+
+.markdown-content code {
+    background: rgba(0, 0, 0, 0.3);
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: monospace;
 }
 
 .loading {

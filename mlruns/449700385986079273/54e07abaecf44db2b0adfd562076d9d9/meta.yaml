@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/449700385986079273/54e07abaecf44db2b0adfd562076d9d9/artifacts
+end_time: 1777897163747
+entry_point_name: ''
+experiment_id: '449700385986079273'
+lifecycle_stage: active
+run_id: 54e07abaecf44db2b0adfd562076d9d9
+run_name: gentle-wren-109
+run_uuid: 54e07abaecf44db2b0adfd562076d9d9
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777897087974
+status: 3
+tags: []
+user_id: harsh

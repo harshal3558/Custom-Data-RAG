@@ -39,11 +39,13 @@ Whether you're processing technical manuals (like `DogTraining101.pdf` included 
 
 ## ✨ Key Features
 - **Instant PDF Ingestion**: Upload documents via a web portal for automatic background indexing.
+- **Multi-Document Knowledge Base**: Index multiple PDFs and search across all of them simultaneously.
+- **Conversational Memory**: Supports follow-up questions and maintains context throughout the chat session.
+- **Query Rewriting**: Automatically rephrases ambiguous follow-up questions (e.g., "Tell me more about it") into standalone queries for accurate retrieval.
 - **Lightning-Fast Generation**: Powered by **Groq**, delivering Llama-3-70B responses at unprecedented speeds.
 - **Persistent Vector Storage**: Uses **ChromaDB** to ensure your document embeddings are saved across sessions.
-- **Hybrid Search Capabilities**: Fine-tuned retrieval logic with **Sentence-Transformers** for high semantic accuracy.
-- **Experiment Monitoring**: Fully integrated with **MLflow** to track ingestion metrics and LLM performance.
-- **Clean UI**: A responsive Flask-driven frontend for seamless document interaction.
+- **Similarity Filtering**: Automatic noise reduction to ensure only the most relevant context is used for generation.
+- **Premium UI**: Responsive Flask-driven frontend with Markdown support and a dedicated **Knowledge Reset** button.
 - **Dockerized Deployment**: Fully containerized for consistent deployment across environments.
 
 ---
@@ -191,7 +193,8 @@ mlflow ui
 
 - **`GET /`**: Renders the application homepage.
 - **`POST /upload`**: Takes a PDF file, executes chunking and vector store ingestion.
-- **`POST /query`**: Accepts a JSON query and returns an AI-generated answer based on retrieved documents.
+- **`POST /query`**: Accepts a JSON query and session history, returns an AI-generated answer.
+- **`POST /reset`**: Clears the persistent vector store and resets the knowledge base.
 
 **Input Sample (Query):**
 ```json

@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/ba04beec5c8d45eaa77f26d7eca11895/artifacts
+end_time: 1777897825375
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: ba04beec5c8d45eaa77f26d7eca11895
+run_name: rare-cod-411
+run_uuid: ba04beec5c8d45eaa77f26d7eca11895
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777897824547
+status: 3
+tags: []
+user_id: harsh

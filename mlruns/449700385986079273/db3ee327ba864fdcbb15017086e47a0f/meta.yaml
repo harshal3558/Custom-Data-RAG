@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/449700385986079273/db3ee327ba864fdcbb15017086e47a0f/artifacts
+end_time: 1777897772811
+entry_point_name: ''
+experiment_id: '449700385986079273'
+lifecycle_stage: active
+run_id: db3ee327ba864fdcbb15017086e47a0f
+run_name: auspicious-stag-990
+run_uuid: db3ee327ba864fdcbb15017086e47a0f
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777897719064
+status: 3
+tags: []
+user_id: harsh

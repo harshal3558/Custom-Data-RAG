@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/449700385986079273/56c0e3cb0c8f4401b3f9c0b10a4e5177/artifacts
+end_time: 1777899714268
+entry_point_name: ''
+experiment_id: '449700385986079273'
+lifecycle_stage: active
+run_id: 56c0e3cb0c8f4401b3f9c0b10a4e5177
+run_name: languid-doe-193
+run_uuid: 56c0e3cb0c8f4401b3f9c0b10a4e5177
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777899711448
+status: 3
+tags: []
+user_id: harsh

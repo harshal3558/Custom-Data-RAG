@@ -47,12 +47,12 @@ class PredictionPipeline:
         except Exception as e:
             logging.warning(f"Could not initialize MLflow experiment: {e}")
 
-    def predict(self, query):
+    def predict(self, query, chat_history=None):
         try:
             # Start the inference process
             logging.info(f"Checking for vector store at {self.persist_directory}")
             if not os.path.exists(self.persist_directory):
-                return "The document index has not been created yet. Please upload a PDF first."
+                return {"answer": "The document index has not been created yet. Please upload a PDF first.", "sources": []}
 
             from chromadb.config import Settings
             client = chromadb.PersistentClient(
@@ -67,7 +67,7 @@ class PredictionPipeline:
                     embedding_function=None
                 )
             except Exception:
-                return "The document collection has not been initialized. Please upload and index a document."
+                return {"answer": "The document collection has not been initialized. Please upload and index a document.", "sources": []}
             
             # Start MLflow run if possible
             import time
@@ -80,51 +80,98 @@ class PredictionPipeline:
             except Exception:
                 active_run = None
 
-            # 1. Retrieval
+            # 1. Condense Question (Rewriting based on history)
+            standalone_query = query
+            if chat_history and len(chat_history) > 0:
+                condense_template = ChatPromptTemplate.from_template("""
+                Given the following conversation and a follow up question, rephrase the follow up question to be a standalone question.
+                
+                Chat History:
+                {history}
+                
+                Follow Up Input: {question}
+                
+                Standalone Question:""")
+                
+                condense_chain = condense_template | self.llm
+                history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in chat_history[-3:]])
+                rewritten = condense_chain.invoke({"history": history_str, "question": query})
+                standalone_query = rewritten.content
+                logging.info(f"Rewritten query: {standalone_query}")
+
+            # 2. Retrieval
             retrieval_start = time.time()
-            query_embedding = self.model.encode([query])[0]
+            query_embedding = self.model.encode([standalone_query])[0]
             
             results = collection.query(
                 query_embeddings=[query_embedding.tolist()],
-                n_results=5,
-                include=['documents', 'distances']
+                n_results=8,
+                include=['documents', 'distances', 'metadatas']
             )
             retrieval_end = time.time()
             retrieval_duration = retrieval_end - retrieval_start
             
             contexts = results['documents'][0]
             distances = results['distances'][0]
+            metadatas = results['metadatas'][0]
             
-            # Convert distances to similarity scores (Cos Sim = 1 - Distance for cosine)
-            avg_score = 1 - (sum(distances) / len(distances)) if distances else 0
+            # Filter results by similarity threshold (Distance < 0.6 means Sim > 0.4 for L2/Cosine varies)
+            # For cosine, distance is 0-2 (0 is identical). Sim = 1 - Dist.
+            # Let's keep only those with similarity > 0.3 to filter out completely irrelevant noise.
+            filtered_contexts = []
+            sources = []
+            for i in range(len(contexts)):
+                score = 1 - distances[i]
+                if score > 0.25: # Low threshold to keep some context but remove pure noise
+                    filtered_contexts.append(contexts[i])
+                    sources.append({
+                        "content": contexts[i],
+                        "metadata": metadatas[i],
+                        "score": score
+                    })
+
+            avg_score = sum([s['score'] for s in sources]) / len(sources) if sources else 0
             
-            if not contexts:
-                answer = "I couldn't find any relevant information in the uploaded PDF to answer that."
+            context_text = ""
+            if not filtered_contexts:
+                answer = "I couldn't find any relevant information in the documents to answer your question. Could you please be more specific?"
                 llm_duration = 0
             else:
-                context_text = "\n\n".join(contexts)
+                context_text = "\n\n".join(filtered_contexts)
                 
+                # Conversational Prompt
+                history_text = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in chat_history[-5:]]) if chat_history else ""
+
                 prompt_template = ChatPromptTemplate.from_template("""
-                Answer the user's question based strictly on the provided context. 
-                If the context doesn't contain the answer, say that you don't know based on the provided PDF.
-                
+                You are a professional assistant. Answer the user's question using the provided context and conversation history.
+                If the context contains information from different topics, focus only on the topic relevant to the user's current question.
+                If the answer is not in the context, say that you don't know.
+
+                Conversation History:
+                {history}
+
                 Context:
                 {context}
                 
                 Question: {question}
-                """)
+                
+                Answer:""")
                 
                 llm_start = time.time()
                 chain = prompt_template | self.llm
-                response = chain.invoke({"context": context_text, "question": query})
+                response = chain.invoke({
+                    "context": context_text, 
+                    "question": standalone_query,
+                    "history": history_text
+                })
                 answer = response.content
                 llm_end = time.time()
                 llm_duration = llm_end - llm_start
             
             total_duration = time.time() - start_time
             
-            # Crude token estimation (4 chars per token average)
-            estimated_tokens = (len(context_text) + len(query) + len(answer)) // 4 if contexts else 0
+            # Crude token estimation
+            estimated_tokens = (len(context_text) + len(query) + len(answer)) // 4
 
             # Log metrics to MLflow if run was started
             if active_run:
@@ -134,14 +181,14 @@ class PredictionPipeline:
                     mlflow.log_metric("total_time_sec", total_duration)
                     mlflow.log_metric("mean_retrieval_score", avg_score)
                     mlflow.log_metric("answer_length", len(answer))
-                    mlflow.log_metric("num_retrieved_docs", len(contexts))
+                    mlflow.log_metric("num_retrieved_docs", len(filtered_contexts))
                     mlflow.log_metric("estimated_tokens", estimated_tokens)
                     mlflow.end_run()
                 except Exception as e:
                     logging.warning(f"Failed to log metrics to MLflow: {e}")
                     pass
 
-            return answer
+            return {"answer": answer, "sources": sources}
 
         except Exception as e:
             raise CustomException(e, sys)

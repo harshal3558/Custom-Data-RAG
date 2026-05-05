@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/9c1be69c542f4aa3a3a80e6d275e8253/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: 9c1be69c542f4aa3a3a80e6d275e8253
+run_name: suave-conch-416
+run_uuid: 9c1be69c542f4aa3a3a80e6d275e8253
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777899731164
+status: 1
+tags: []
+user_id: harsh

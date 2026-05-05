@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/31054a4d163d4b81b61720bda7434c50/artifacts
+end_time: 1777897531362
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: 31054a4d163d4b81b61720bda7434c50
+run_name: sassy-gnu-850
+run_uuid: 31054a4d163d4b81b61720bda7434c50
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777897530463
+status: 3
+tags: []
+user_id: harsh

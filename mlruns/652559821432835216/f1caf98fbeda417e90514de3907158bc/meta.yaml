@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/f1caf98fbeda417e90514de3907158bc/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: f1caf98fbeda417e90514de3907158bc
+run_name: calm-stork-287
+run_uuid: f1caf98fbeda417e90514de3907158bc
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777899605658
+status: 1
+tags: []
+user_id: harsh

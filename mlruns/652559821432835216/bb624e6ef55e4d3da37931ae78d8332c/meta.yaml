@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/bb624e6ef55e4d3da37931ae78d8332c/artifacts
+end_time: 1777897208121
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: bb624e6ef55e4d3da37931ae78d8332c
+run_name: vaunted-swan-923
+run_uuid: bb624e6ef55e4d3da37931ae78d8332c
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777897206078
+status: 3
+tags: []
+user_id: harsh

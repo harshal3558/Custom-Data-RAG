@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/harsh/OneDrive/Desktop/Custom_RAG/mlruns/652559821432835216/55558d0b8de747a6b1a8168bc8baf297/artifacts
+end_time: 1777900191167
+entry_point_name: ''
+experiment_id: '652559821432835216'
+lifecycle_stage: active
+run_id: 55558d0b8de747a6b1a8168bc8baf297
+run_name: stately-kite-492
+run_uuid: 55558d0b8de747a6b1a8168bc8baf297
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1777900189889
+status: 3
+tags: []
+user_id: harsh

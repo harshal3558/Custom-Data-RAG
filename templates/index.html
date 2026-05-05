@@ -13,6 +13,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Marked.js for Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 
 <body>
@@ -23,6 +25,11 @@
                 <h1>Custom <span class="gradient-text">RAG</span> Assistant</h1>
             </div>
             <p class="subtitle">Upload a PDF and talk to your data in seconds.</p>
+            <div class="header-actions">
+                <button class="btn btn-outline" id="reset-db-btn" title="Clear all indexed documents">
+                    <i class="fa-solid fa-trash-can"></i> Reset Knowledge Base
+                </button>
+            </div>
         </header>
 
         <main>
@@ -82,8 +89,10 @@
         const userQueryInput = document.getElementById('user-query');
         const sendBtn = document.getElementById('send-btn');
         const statusMsg = document.getElementById('upload-status');
+        const resetBtn = document.getElementById('reset-db-btn');
 
         let selectedFile = null;
+        let chatHistory = [];
 
         dropZone.onclick = () => fileInput.click();
 
@@ -143,17 +152,29 @@
                 const response = await fetch('/query', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query })
+                    body: JSON.stringify({ 
+                        query: query,
+                        history: chatHistory 
+                    })
                 });
 
                 const result = await response.json();
 
+                // Update history
+                chatHistory.push({ role: 'user', content: query });
+                if (result.answer) {
+                    chatHistory.push({ role: 'assistant', content: result.answer });
+                }
+
                 const loadingMsg = document.getElementById(loadingMsgId);
-                loadingMsg.innerHTML = (result.answer || result.error || "No response").replace(/\n/g, '<br>');
+                loadingMsg.innerHTML = `<div class="markdown-content">${marked.parse(result.answer || result.error || "No response")}</div>`;
+                
                 loadingMsg.classList.remove('loading');
                 chatBox.scrollTop = chatBox.scrollHeight;
             } catch (err) {
-                appendMessage("Sorry, I encountered an error: " + err.message, 'bot-message');
+                const loadingMsg = document.getElementById(loadingMsgId);
+                loadingMsg.innerHTML = "Sorry, I encountered an error: " + err.message;
+                loadingMsg.classList.remove('loading');
                 chatBox.scrollTop = chatBox.scrollHeight;
             }
         };
@@ -163,7 +184,7 @@
             const msgDiv = document.createElement('div');
             msgDiv.className = 'message ' + className;
             msgDiv.id = msgId;
-            msgDiv.innerHTML = text.replace(/\n/g, '<br>');
+            msgDiv.innerHTML = className.includes('user-message') ? text : text;
             chatBox.appendChild(msgDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
             return msgId;
@@ -172,6 +193,30 @@
         sendBtn.onclick = sendMessage;
         userQueryInput.onkeypress = (e) => {
             if (e.key === 'Enter') sendMessage();
+        };
+
+        resetBtn.onclick = async () => {
+            if (!confirm("Are you sure you want to delete ALL indexed documents? This cannot be undone.")) return;
+            
+            resetBtn.disabled = true;
+            resetBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Resetting...';
+
+            try {
+                const response = await fetch('/reset', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(result.success);
+                    window.location.reload(); // Refresh to clear chat state
+                } else {
+                    alert("Error: " + result.error);
+                }
+            } catch (err) {
+                alert("An error occurred: " + err.message);
+            } finally {
+                resetBtn.disabled = false;
+                resetBtn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Reset Knowledge Base';
+            }
         };
     </script>
 </body>
