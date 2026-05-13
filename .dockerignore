@@ -1,12 +1,54 @@
+# Source Control
 .git
-__pycache__
-*.pyc
-*.pyo
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
 *.pyd
-.db
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+cragenv/
+
+# Environment and Secrets
 .env
-cragenv
-logs
-data/uploads/*
-notebook
-CDRAG.egg-info
+.venv
+.python-version
+
+# Logs
+logs/
+*.log
+
+# Project Specific
+mlruns/
+notebook/
+data/
+.ipynb_checkpoints/
+.pytest_cache/
+.vscode/
+.idea/
+
+# Large Data (Optional - usually handled via volumes)
+*.pdf
+*.zip
+*.tar.gz
