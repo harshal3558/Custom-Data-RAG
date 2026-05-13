@@ -122,7 +122,7 @@ class PredictionPipeline:
             sources = []
             for i in range(len(contexts)):
                 score = 1 - distances[i]
-                if score > 0.25: # Low threshold to keep some context but remove pure noise
+                if score > 0.18: # Lowered threshold slightly for better recall
                     filtered_contexts.append(contexts[i])
                     sources.append({
                         "content": contexts[i],
@@ -143,19 +143,24 @@ class PredictionPipeline:
                 history_text = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in chat_history[-5:]]) if chat_history else ""
 
                 prompt_template = ChatPromptTemplate.from_template("""
-                You are a professional assistant. Answer the user's question using the provided context and conversation history.
-                If the context contains information from different topics, focus only on the topic relevant to the user's current question.
-                If the answer is not in the context, say that you don't know.
+                You are "GroqRAG Turbo", an advanced AI specialized in analyzing PDF documents.
+                The user has provided a document, and you have been given relevant snippets from it as "Context".
+                
+                YOUR TASK:
+                1. Use the provided Context and Conversation History to answer the Question.
+                2. If the context contains a Table of Contents or index, use it to understand the structure, but look for the actual answer in the other snippets.
+                3. If the answer is absolutely not present in the context, politely state that the current document doesn't contain that information.
+                4. NEVER say you don't have access to the PDF, because the Context below IS the PDF data.
 
                 Conversation History:
                 {history}
 
-                Context:
+                Context from PDF:
                 {context}
                 
-                Question: {question}
+                User Question: {question}
                 
-                Answer:""")
+                Direct Answer:""")
                 
                 llm_start = time.time()
                 chain = prompt_template | self.llm
