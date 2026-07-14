@@ -4,6 +4,7 @@ prediction_pipeline.py — RAG Prediction Pipeline
 Uses LLMGateway for LLM construction (single source of truth),
 ConversationMemory for chat history, and cleans up duplicated
 env-var loading / key-stripping that now lives in gateway.py.
+Integrates MLflow Tracing via @mlflow.trace on core execution pathways.
 """
 import os
 import sys
@@ -42,6 +43,7 @@ class PredictionPipeline:
     # Public API
     # ------------------------------------------------------------------
 
+    @mlflow.trace(name="RAG_Prediction")
     def predict(self, query: str, chat_history: list = None) -> dict:
         """
         Run retrieval-augmented generation for *query*.
@@ -96,84 +98,19 @@ class PredictionPipeline:
             # 1. Condense question using chat history
             standalone_query = self._condense_query(query, chat_history or [])
 
-            # 2. Retrieval
+            # 2. Retrieval (Traced)
             retrieval_start = time.time()
-            query_embedding = self.embedding_model.encode([standalone_query])[0]
-            results = collection.query(
-                query_embeddings=[query_embedding.tolist()],
-                n_results=8,
-                include=['documents', 'distances', 'metadatas'],
-            )
+            contexts, sources, avg_score = self._retrieve(collection, standalone_query)
             retrieval_duration = time.time() - retrieval_start
 
-            contexts   = results['documents'][0]
-            distances  = results['distances'][0]
-            metadatas  = results['metadatas'][0]
-
-            # Filter by similarity threshold (cosine distance → similarity = 1 - dist)
-            filtered_contexts, sources = [], []
-            for i, (ctx, dist, meta) in enumerate(zip(contexts, distances, metadatas)):
-                score = 1 - dist
-                if score > 0.18:
-                    filtered_contexts.append(ctx)
-                    sources.append({"content": ctx, "metadata": meta, "score": score})
-
-            avg_score = (
-                sum(s['score'] for s in sources) / len(sources) if sources else 0.0
-            )
-
-            # 3. LLM generation
-            llm_duration = 0
-            if not filtered_contexts:
-                answer = (
-                    "I couldn't find any relevant information in the documents to answer your question. "
-                    "Could you please be more specific?"
-                )
-            else:
-                context_text = "\n\n".join(filtered_contexts)
-                history_text = (
-                    "\n".join(
-                        f"{m['role'].capitalize()}: {m['content']}"
-                        for m in (chat_history or [])[-5:]
-                    )
-                    if chat_history
-                    else ""
-                )
-
-                prompt = ChatPromptTemplate.from_template("""
-You are "GroqRAG Turbo", an advanced AI specialised in analysing PDF documents.
-The user has provided a document, and you have been given relevant snippets from it as "Context".
-
-YOUR TASK:
-1. Use the provided Context and Conversation History to answer the Question.
-2. If the context contains a Table of Contents or index, use it to understand the structure,
-   but look for the actual answer in the other snippets.
-3. If the answer is absolutely not present in the context, politely state that the current
-   document doesn't contain that information.
-4. NEVER say you don't have access to the PDF — the Context below IS the PDF data.
-
-Conversation History:
-{history}
-
-Context from PDF:
-{context}
-
-User Question: {question}
-
-Direct Answer:""")
-
-                llm_start = time.time()
-                chain = prompt | self.llm
-                response = self.gateway.invoke_with_retry(
-                    chain,
-                    {"context": context_text, "question": standalone_query, "history": history_text},
-                )
-                answer = response.content
-                llm_duration = time.time() - llm_start
+            # 3. LLM generation (Traced)
+            llm_start = time.time()
+            answer = self._generate_answer(contexts, standalone_query, chat_history)
+            llm_duration = time.time() - llm_start
 
             total_duration = time.time() - start_time
             estimated_tokens = (
-                len("\n\n".join(filtered_contexts)) + len(query) + len(answer)
+                len("\n\n".join(contexts)) + len(query) + len(answer)
             ) // 4
 
             # Log metrics to MLflow
@@ -184,7 +121,7 @@ Direct Answer:""")
                     mlflow.log_metric("total_time_sec", total_duration)
                     mlflow.log_metric("mean_retrieval_score", avg_score)
                     mlflow.log_metric("answer_length", len(answer))
-                    mlflow.log_metric("num_retrieved_docs", len(filtered_contexts))
+                    mlflow.log_metric("num_retrieved_docs", len(contexts))
                     mlflow.log_metric("estimated_tokens", estimated_tokens)
                     mlflow.end_run()
                 except Exception as e:
@@ -195,7 +132,7 @@ Direct Answer:""")
                 "sources": sources,
                 "_meta": {
                     "latency_sec": round(total_duration, 3),
-                    "num_docs": len(filtered_contexts),
+                    "num_docs": len(contexts),
                     "avg_score": round(avg_score, 4),
                 },
             }
@@ -204,9 +141,10 @@ Direct Answer:""")
             raise CustomException(e, sys)
 
     # ------------------------------------------------------------------
-    # Internal helpers
+    # Traced Helpers
     # ------------------------------------------------------------------
 
+    @mlflow.trace(name="Condense_Query")
     def _condense_query(self, query: str, chat_history: list) -> str:
         """Rewrite a follow-up question as a standalone question using history."""
         if not chat_history:
@@ -235,3 +173,77 @@ Standalone Question:""")
         except Exception as e:
             logging.warning(f"Query condensation failed, using original: {e}")
             return query
+
+    @mlflow.trace(name="Retrieval", attributes={"n_results": 8})
+    def _retrieve(self, collection, query: str) -> tuple:
+        """Retrieve matching documents from the vector store."""
+        query_embedding = self.embedding_model.encode([query])[0]
+        results = collection.query(
+            query_embeddings=[query_embedding.tolist()],
+            n_results=8,
+            include=['documents', 'distances', 'metadatas'],
+        )
+
+        contexts   = results['documents'][0]
+        distances  = results['distances'][0]
+        metadatas  = results['metadatas'][0]
+
+        filtered_contexts, sources = [], []
+        for ctx, dist, meta in zip(contexts, distances, metadatas):
+            score = 1 - dist
+            if score > 0.18:
+                filtered_contexts.append(ctx)
+                sources.append({"content": ctx, "metadata": meta, "score": score})
+
+        avg_score = (
+            sum(s['score'] for s in sources) / len(sources) if sources else 0.0
+        )
+        return filtered_contexts, sources, avg_score
+
+    @mlflow.trace(name="LLM_Generation")
+    def _generate_answer(self, contexts: list, query: str, chat_history: list) -> str:
+        """Generate response answer using LLM."""
+        if not contexts:
+            return (
+                "I couldn't find any relevant information in the documents to answer your question. "
+                "Could you please be more specific?"
+            )
+
+        context_text = "\n\n".join(contexts)
+        history_text = (
+            "\n".join(
+                f"{m['role'].capitalize()}: {m['content']}"
+                for m in (chat_history or [])[-5:]
+            )
+            if chat_history
+            else ""
+        )
+
+        prompt = ChatPromptTemplate.from_template("""
+You are "GroqRAG Turbo", an advanced AI specialised in analysing PDF documents.
+The user has provided a document, and you have been given relevant snippets from it as "Context".
+
+YOUR TASK:
+1. Use the provided Context and Conversation History to answer the Question.
+2. If the context contains a Table of Contents or index, use it to understand the structure,
+   but look for the actual answer in the other snippets.
+3. If the answer is absolutely not present in the context, politely state that the current
+   document doesn't contain that information.
+4. NEVER say you don't have access to the PDF — the Context below IS the PDF data.
+
+Conversation History:
+{history}
+
+Context from PDF:
+{context}
+
+User Question: {question}
+
+Direct Answer:""")
+
+        chain = prompt | self.llm
+        response = self.gateway.invoke_with_retry(
+            chain,
+            {"context": context_text, "question": query, "history": history_text},
+        )
+        return response.content

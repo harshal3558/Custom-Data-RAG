@@ -20,6 +20,7 @@ from src.components.guardrails import Guardrails, GuardrailViolation
 from src.components.governance import GovernanceLayer
 from src.components.security import SecurityLayer
 from src.components.observability import ObservabilityLayer
+from src.components.model_evaluator import ModelEvaluator
 
 from src.exception import CustomException
 from src.logger import logging
@@ -44,6 +45,7 @@ governance  = GovernanceLayer()
 security    = SecurityLayer()
 observability = ObservabilityLayer()
 prediction_pipeline = PredictionPipeline()
+evaluator = ModelEvaluator()
 
 # ------------------------------------------------------------------
 # Helpers
@@ -123,7 +125,7 @@ def get_answer():
     """
     Full request lifecycle:
     Security → Memory → Guardrails (input) → Prediction →
-    Guardrails (output) → Governance → Observability → Memory
+    Guardrails (output) → Governance → LLM-as-a-Judge Evaluation → Observability → Memory
     """
     session_id = _get_session_id()
     hashed_sid = security.hash_session_id(session_id)
@@ -173,7 +175,16 @@ def get_answer():
             "policy_reason": policy_reason,
         })
 
-        # ── 7. Observability: record metrics ──────────────────────────
+        # ── 7. LLM-as-a-Judge Evaluation (Live scoring) ───────────────
+        context_text = "\n\n".join([s.get("content", "") for s in sources])
+        eval_scores = {}
+        if sources:
+            try:
+                eval_scores = evaluator.evaluate_single(safe_query, safe_answer, context_text)
+            except Exception as ee:
+                logging.warning(f"Live LLM evaluation scoring failed: {ee}")
+
+        # ── 8. Observability: record metrics + judge scores ───────────
         latency = time.time() - start
         observability.record_request(
             session_id=hashed_sid,
@@ -182,9 +193,10 @@ def get_answer():
             latency=latency,
             num_docs=meta.get("num_docs", len(sources)),
             avg_score=meta.get("avg_score", 0.0),
+            eval_scores=eval_scores
         )
 
-        # ── 8. Memory: store this turn ────────────────────────────────
+        # ── 9. Memory: store this turn ────────────────────────────────
         memory.add_turn(session_id, "user",      safe_query)
         memory.add_turn(session_id, "assistant", safe_answer)
 
