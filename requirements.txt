@@ -10,9 +10,9 @@ faiss-cpu
 chromadb
 langchain-groq
 python-dotenv
-typesense
 langchain_openai
 langgraph
 flask
 mlflow
 dagshub
+pandas
