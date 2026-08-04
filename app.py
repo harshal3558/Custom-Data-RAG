@@ -37,15 +37,26 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 32 * 1024 * 1024  # 32 MB
 
 # ------------------------------------------------------------------
-# Initialise enterprise components (singletons for the Flask process)
-# ------------------------------------------------------------------
 memory      = ConversationMemory()
 guardrails  = Guardrails()
 governance  = GovernanceLayer()
 security    = SecurityLayer()
 observability = ObservabilityLayer()
-prediction_pipeline = PredictionPipeline()
-evaluator = ModelEvaluator()
+
+_prediction_pipeline = None
+_evaluator = None
+
+def get_prediction_pipeline():
+    global _prediction_pipeline
+    if _prediction_pipeline is None:
+        _prediction_pipeline = PredictionPipeline()
+    return _prediction_pipeline
+
+def get_evaluator():
+    global _evaluator
+    if _evaluator is None:
+        _evaluator = ModelEvaluator()
+    return _evaluator
 
 # ------------------------------------------------------------------
 # Helpers
@@ -154,6 +165,7 @@ def get_answer():
             return jsonify(guardrails.get_violation_response(str(gv))), 400
 
         # ── 4. Prediction pipeline ─────────────────────────────────────
+        prediction_pipeline = get_prediction_pipeline()
         result = prediction_pipeline.predict(safe_query, chat_history=chat_history)
         raw_answer = result.get("answer", "")
         sources    = result.get("sources", [])
@@ -180,6 +192,7 @@ def get_answer():
         eval_scores = {}
         if sources:
             try:
+                evaluator = get_evaluator()
                 eval_scores = evaluator.evaluate_single(safe_query, safe_answer, context_text)
             except Exception as ee:
                 logging.warning(f"Live LLM evaluation scoring failed: {ee}")
