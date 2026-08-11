@@ -124,6 +124,10 @@ def health():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     try:
+        session_id = _get_session_id()
+        # Clear previous chat memory for this session when uploading a new document
+        get_memory().clear(session_id)
+
         if 'file' not in request.files:
             return jsonify({"error": "No file part"}), 400
 
@@ -147,7 +151,7 @@ def upload_file():
                 }), 400
 
             transformation = DataTransformation()
-            transformation.initiate_data_transformation(chunks)
+            transformation.initiate_data_transformation(chunks, clear_existing=True)
 
             return jsonify({"success": f"File '{filename}' uploaded and indexed successfully!"})
         else:
@@ -278,6 +282,10 @@ def metrics_summary():
         return jsonify({"error": str(e)}), 500
 
 
+# if __name__ == '__main__':
+#     port = int(os.environ.get("PORT", 5000))
+#     app.run(host='0.0.0.0', port=port)
+
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)

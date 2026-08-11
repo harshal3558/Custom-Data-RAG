@@ -125,6 +125,12 @@
                 const result = await response.json();
 
                 if (result.success) {
+                    chatHistory = [];
+                    chatBox.innerHTML = `
+                        <div class="message bot-message">
+                            Successfully indexed <strong>${selectedFile.name}</strong>! Go ahead, ask me anything about it.
+                        </div>
+                    `;
                     uploadSection.classList.add('fade-out');
                     setTimeout(() => {
                         uploadSection.style.display = 'none';

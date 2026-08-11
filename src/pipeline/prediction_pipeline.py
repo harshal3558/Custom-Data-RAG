@@ -82,6 +82,11 @@ class PredictionPipeline:
                     name=self.collection_name,
                     embedding_function=None,
                 )
+                if collection.count() == 0:
+                    return {
+                        "answer": "The document index is currently empty. Please upload and index a PDF document first.",
+                        "sources": [],
+                    }
             except Exception:
                 return {
                     "answer": "The document collection has not been initialised. Please upload and index a document.",
@@ -181,12 +186,22 @@ Standalone Question:""")
     @mlflow.trace(name="Retrieval", attributes={"n_results": 8})
     def _retrieve(self, collection, query: str) -> tuple:
         """Retrieve matching documents from the vector store."""
+        try:
+            if collection.count() == 0:
+                return [], [], 0.0
+        except Exception:
+            return [], [], 0.0
+
         query_embedding = self.embedding_model.encode([query])[0]
+        n_results = min(8, max(1, collection.count()))
         results = collection.query(
             query_embeddings=[query_embedding.tolist()],
-            n_results=8,
+            n_results=n_results,
             include=['documents', 'distances', 'metadatas'],
         )
+
+        if not results or not results.get('documents') or not results['documents'][0]:
+            return [], [], 0.0
 
         contexts   = results['documents'][0]
         distances  = results['distances'][0]
@@ -194,8 +209,15 @@ Standalone Question:""")
 
         filtered_contexts, sources = [], []
         for ctx, dist, meta in zip(contexts, distances, metadatas):
-            score = 1 - dist
-            if score > 0.18:
+            score = max(0.0, 1 - dist)
+            if score > 0.05:
+                filtered_contexts.append(ctx)
+                sources.append({"content": ctx, "metadata": meta, "score": score})
+
+        # Fallback: If strict threshold filtered out all chunks, take top candidates
+        if not filtered_contexts and contexts:
+            for ctx, dist, meta in zip(contexts[:4], distances[:4], metadatas[:4]):
+                score = max(0.0, 1 - dist)
                 filtered_contexts.append(ctx)
                 sources.append({"content": ctx, "metadata": meta, "score": score})
 

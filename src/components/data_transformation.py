@@ -24,7 +24,7 @@ class DataTransformation:
     def model(self):
         return get_embedding_model(self.model_name)
 
-    def initiate_data_transformation(self, chunks):
+    def initiate_data_transformation(self, chunks, clear_existing: bool = True):
         logging.info("Initiating data transformation with MLflow tracking")
         try:
             if not chunks:
@@ -52,8 +52,15 @@ class DataTransformation:
                     path=self.config.persist_directory,
                     settings=Settings(anonymized_telemetry=False)
                 )
+
+                if clear_existing:
+                    try:
+                        client.delete_collection(name=self.config.collection_name)
+                        logging.info(f"Purged previous vector store collection '{self.config.collection_name}' for new document.")
+                    except Exception as ce:
+                        logging.info(f"No existing collection to delete or delete skipped: {ce}")
                 
-                # Get or create collection to allow multi-document indexing
+                # Get or create fresh collection
                 collection = client.get_or_create_collection(
                     name=self.config.collection_name,
                     metadata={"hnsw:space": "cosine"},
