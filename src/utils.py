@@ -18,3 +18,19 @@ def load_object(file_path):
             return pickle.load(file_obj)
     except Exception as e:
         raise CustomException(e, sys)
+
+_embedding_model = None
+
+def get_embedding_model(model_name: str = 'all-MiniLM-L6-v2'):
+    """Lazy-loaded shared SentenceTransformer singleton to prevent RAM duplication on cloud deployment."""
+    global _embedding_model
+    if _embedding_model is None:
+        try:
+            import torch
+            torch.set_num_threads(1)
+        except ImportError:
+            pass
+        from sentence_transformers import SentenceTransformer
+        _embedding_model = SentenceTransformer(model_name)
+    return _embedding_model
+

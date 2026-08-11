@@ -6,9 +6,9 @@ import uuid
 import mlflow
 from chromadb.config import Settings
 from dataclasses import dataclass
-from sentence_transformers import SentenceTransformer
 from src.exception import CustomException
 from src.logger import logging
+from src.utils import get_embedding_model
 
 @dataclass
 class DataTransformationConfig:
@@ -19,7 +19,10 @@ class DataTransformation:
     def __init__(self):
         self.config = DataTransformationConfig()
         self.model_name = 'all-MiniLM-L6-v2'
-        self.model = SentenceTransformer(self.model_name)
+
+    @property
+    def model(self):
+        return get_embedding_model(self.model_name)
 
     def initiate_data_transformation(self, chunks):
         logging.info("Initiating data transformation with MLflow tracking")

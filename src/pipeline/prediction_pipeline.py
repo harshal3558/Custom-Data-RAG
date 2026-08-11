@@ -19,6 +19,7 @@ from dotenv import load_dotenv
 from src.components.gateway import LLMGateway
 from src.exception import CustomException
 from src.logger import logging
+from src.utils import get_embedding_model
 
 load_dotenv()
 
@@ -28,7 +29,6 @@ class PredictionPipeline:
         self.persist_directory = os.path.join('data', 'vector_store')
         self.collection_name = "pdf_documents"
         self.embedding_model_name = 'all-MiniLM-L6-v2'
-        self.embedding_model = SentenceTransformer(self.embedding_model_name)
 
         # LLM via gateway (handles key loading + retry)
         self.gateway = LLMGateway()
@@ -38,6 +38,10 @@ class PredictionPipeline:
             mlflow.set_experiment("RAG_Inference_Monitoring")
         except Exception as e:
             logging.warning(f"Could not initialise MLflow experiment: {e}")
+
+    @property
+    def embedding_model(self):
+        return get_embedding_model(self.embedding_model_name)
 
     # ------------------------------------------------------------------
     # Public API
