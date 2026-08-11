@@ -1,65 +1,30 @@
-# # Use an official Python runtime as a parent image
-# FROM python:3.10-slim
-
-# # Set the working directory in the container
-# WORKDIR /app
-
-# # Install system dependencies
-# # libgomp1 is needed for faiss-cpu
-# RUN apt-get update && apt-get install -y \
-#     build-essential \
-#     libgomp1 \
-#     && rm -rf /var/lib/apt/lists/*
-
-# # Copy the requirements file into the container
-# COPY requirements.txt .
-
-# # Install any needed packages specified in requirements.txt
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# # Copy the rest of the application code into the container
-# COPY . .
-
-# # Expose the port the app runs on
-# EXPOSE 5000
-
-# # Define environment variable for Flask
-# ENV FLASK_APP=app.py
-# ENV PYTHONUNBUFFERED=1
-
-# # Run the application using gunicorn bound to PORT (defaults to 5000)
-# # CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-5000} --workers 1 --timeout 120 app:app"]
-# # Run the application using gunicorn bound to Render's PORT
-# CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 app:app"]
-
 # Use an official Python runtime as a parent image
 FROM python:3.10-slim
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Install system dependencies
-# libgomp1 is needed for faiss-cpu
+# Install system dependencies (libgomp1 needed for faiss-cpu)
 RUN apt-get update && apt-get install -y \
     build-essential \
     libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file into the container
+# Copy requirements file into container
 COPY requirements.txt .
 
-# Install any needed packages specified in requirements.txt
+# Install packages
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application code into the container
+# Copy application code into container
 COPY . .
 
-# Expose the port the app runs on
+# Expose port for container execution
 EXPOSE 10000
 
-# Define environment variable for Flask
+# Define environment variables for Flask
 ENV FLASK_APP=app.py
 ENV PYTHONUNBUFFERED=1
 
 # Run the application using gunicorn bound to Render's PORT (defaults to 10000)
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --timeout 120 app:app"]
+CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-10000} --workers 1 --threads 2 --timeout 120 app:app"]
