@@ -56,44 +56,85 @@ class DataTransformation:
                 texts = [chunk.page_content for chunk in chunks]
                 embeddings = self.model.encode(texts, show_progress_bar=True)
                 
-                os.makedirs(self.config.persist_directory, exist_ok=True)
+                import shutil
+                def _reset_persist_directory():
+                    logging.warning(f"Resetting persist directory '{self.config.persist_directory}' for clean database schema initialization.")
+                    if os.path.exists(self.config.persist_directory):
+                        try:
+                            shutil.rmtree(self.config.persist_directory)
+                        except Exception as re:
+                            logging.error(f"Could not remove persist_directory: {re}")
+                    os.makedirs(self.config.persist_directory, exist_ok=True)
+
+                if clear_existing:
+                    _reset_persist_directory()
+                else:
+                    os.makedirs(self.config.persist_directory, exist_ok=True)
                 
                 # Fixed: Disabling telemetry and explicitly setting embedding_function=None 
                 # to avoid loading unused native bindings that cause 'RustBindingsAPI' errors.
-                client = chromadb.PersistentClient(
-                    path=self.config.persist_directory,
-                    settings=Settings(anonymized_telemetry=False)
-                )
-
-                if clear_existing:
-                    try:
-                        client.delete_collection(name=self.config.collection_name)
-                        logging.info(f"Purged previous vector store collection '{self.config.collection_name}' for new document.")
-                    except Exception as ce:
-                        logging.info(f"No existing collection to delete or delete skipped: {ce}")
-                
-                # Get or create fresh collection
-                collection = client.get_or_create_collection(
-                    name=self.config.collection_name,
-                    metadata={"hnsw:space": "cosine"},
-                    embedding_function=None
-                )
+                try:
+                    client = chromadb.PersistentClient(
+                        path=self.config.persist_directory,
+                        settings=Settings(anonymized_telemetry=False)
+                    )
+                    collection = client.get_or_create_collection(
+                        name=self.config.collection_name,
+                        metadata={"hnsw:space": "cosine"},
+                        embedding_function=None
+                    )
+                except Exception as db_init_err:
+                    logging.warning(f"ChromaDB initialization failed ({db_init_err}). Resetting persist directory.")
+                    _reset_persist_directory()
+                    client = chromadb.PersistentClient(
+                        path=self.config.persist_directory,
+                        settings=Settings(anonymized_telemetry=False)
+                    )
+                    collection = client.get_or_create_collection(
+                        name=self.config.collection_name,
+                        metadata={"hnsw:space": "cosine"},
+                        embedding_function=None
+                    )
                 
                 ids = [f"doc_{uuid.uuid4().hex[:8]}_{i}" for i in range(len(chunks))]
                 metadatas = [dict(chunk.metadata) for chunk in chunks]
-                
                 embeddings_list = embeddings.tolist()
                 
-                # Batch indexing to avoid potential large payload issues
+                # Batch indexing with fallback recovery if SQLite table error occurs
                 batch_size = 100
-                for i in range(0, len(chunks), batch_size):
-                    end = min(i + batch_size, len(chunks))
-                    collection.add(
-                        ids=ids[i:end],
-                        embeddings=embeddings_list[i:end],
-                        metadatas=metadatas[i:end],
-                        documents=texts[i:end]
-                    )
+                try:
+                    for i in range(0, len(chunks), batch_size):
+                        end = min(i + batch_size, len(chunks))
+                        collection.add(
+                            ids=ids[i:end],
+                            embeddings=embeddings_list[i:end],
+                            metadatas=metadatas[i:end],
+                            documents=texts[i:end]
+                        )
+                except Exception as add_err:
+                    err_msg = str(add_err).lower()
+                    if "no such table" in err_msg or "database error" in err_msg or "query error" in err_msg:
+                        logging.warning(f"Database error during collection.add: {add_err}. Resetting database schema and retrying.")
+                        _reset_persist_directory()
+                        client = chromadb.PersistentClient(
+                            path=self.config.persist_directory,
+                            settings=Settings(anonymized_telemetry=False)
+                        )
+                        collection = client.get_or_create_collection(
+                            name=self.config.collection_name,
+                            metadata={"hnsw:space": "cosine"},
+                            embedding_function=None
+                        )
+                        for i in range(0, len(chunks), batch_size):
+                            end = min(i + batch_size, len(chunks))
+                            collection.add(
+                                ids=ids[i:end],
+                                embeddings=embeddings_list[i:end],
+                                metadatas=metadatas[i:end],
+                                documents=texts[i:end]
+                            )
+                    else:
+                        raise add_err
                 
                 # Log Metrics
                 try:
