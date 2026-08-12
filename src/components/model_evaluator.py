@@ -120,7 +120,16 @@ class ModelEvaluator:
             test_queries = queries if queries else self.config.default_queries
             os.makedirs(self.config.output_dir, exist_ok=True)
 
-            mlflow.set_experiment(self.config.mlflow_experiment)
+            try:
+                mlflow.set_experiment(self.config.mlflow_experiment)
+            except Exception as me:
+                logging.warning(f"Could not set MLflow experiment: {me}")
+
+            if mlflow.active_run():
+                try:
+                    mlflow.end_run()
+                except Exception as me:
+                    logging.warning(f"Could not end active MLflow run: {me}")
 
             results = []
 

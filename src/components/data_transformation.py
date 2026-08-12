@@ -32,14 +32,26 @@ class DataTransformation:
                 return None
 
             # Set MLflow experiment
-            mlflow.set_experiment("RAG_Indexing_Pipeline")
+            try:
+                mlflow.set_experiment("RAG_Indexing_Pipeline")
+            except Exception as me:
+                logging.warning(f"Could not set MLflow experiment: {me}")
+
+            if mlflow.active_run():
+                try:
+                    mlflow.end_run()
+                except Exception as me:
+                    logging.warning(f"Could not end active MLflow run: {me}")
             
             with mlflow.start_run():
                 # Log Parameters
-                mlflow.log_param("chunk_size", 1000)
-                mlflow.log_param("chunk_overlap", 200)
-                mlflow.log_param("model_name", self.model_name)
-                mlflow.log_param("collection_name", self.config.collection_name)
+                try:
+                    mlflow.log_param("chunk_size", 1000)
+                    mlflow.log_param("chunk_overlap", 200)
+                    mlflow.log_param("model_name", self.model_name)
+                    mlflow.log_param("collection_name", self.config.collection_name)
+                except Exception as me:
+                    logging.warning(f"MLflow log_param warning: {me}")
 
                 texts = [chunk.page_content for chunk in chunks]
                 embeddings = self.model.encode(texts, show_progress_bar=True)
@@ -84,8 +96,11 @@ class DataTransformation:
                     )
                 
                 # Log Metrics
-                mlflow.log_metric("num_chunks", len(chunks))
-                mlflow.log_metric("avg_chunk_length", np.mean([len(t) for t in texts]))
+                try:
+                    mlflow.log_metric("num_chunks", len(chunks))
+                    mlflow.log_metric("avg_chunk_length", np.mean([len(t) for t in texts]))
+                except Exception as me:
+                    logging.warning(f"MLflow log_metric warning: {me}")
                 
                 logging.info(f"Successfully indexed {len(chunks)} chunks and tracked with MLflow")
                 

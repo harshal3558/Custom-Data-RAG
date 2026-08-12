@@ -76,7 +76,7 @@ class ObservabilityLayer:
 
             # Log to MLflow if active run is open
             try:
-                if eval_scores:
+                if eval_scores and mlflow.active_run():
                     for score_name, score_val in eval_scores.items():
                         if score_val is not None:
                             mlflow.log_metric(f"live_{score_name}", score_val)

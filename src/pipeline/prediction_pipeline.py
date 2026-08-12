@@ -94,57 +94,66 @@ class PredictionPipeline:
                 }
 
             start_time = time.time()
-
             # MLflow run (best-effort)
             active_run = None
             try:
+                if mlflow.active_run():
+                    mlflow.end_run()
                 active_run = mlflow.start_run()
                 mlflow.log_param("query", query)
                 mlflow.log_param("embedding_model", self.embedding_model_name)
-            except Exception:
+            except Exception as me:
+                logging.warning(f"Could not start MLflow run: {me}")
                 active_run = None
 
-            # 1. Condense question using chat history
-            standalone_query = self._condense_query(query, chat_history or [])
+            try:
+                # 1. Condense question using chat history
+                standalone_query = self._condense_query(query, chat_history or [])
 
-            # 2. Retrieval (Traced)
-            retrieval_start = time.time()
-            contexts, sources, avg_score = self._retrieve(collection, standalone_query)
-            retrieval_duration = time.time() - retrieval_start
+                # 2. Retrieval (Traced)
+                retrieval_start = time.time()
+                contexts, sources, avg_score = self._retrieve(collection, standalone_query)
+                retrieval_duration = time.time() - retrieval_start
 
-            # 3. LLM generation (Traced)
-            llm_start = time.time()
-            answer = self._generate_answer(contexts, standalone_query, chat_history)
-            llm_duration = time.time() - llm_start
+                # 3. LLM generation (Traced)
+                llm_start = time.time()
+                answer = self._generate_answer(contexts, standalone_query, chat_history)
+                llm_duration = time.time() - llm_start
 
-            total_duration = time.time() - start_time
-            estimated_tokens = (
-                len("\n\n".join(contexts)) + len(query) + len(answer)
-            ) // 4
+                total_duration = time.time() - start_time
+                estimated_tokens = (
+                    len("\n\n".join(contexts)) + len(query) + len(answer)
+                ) // 4
 
-            # Log metrics to MLflow
-            if active_run:
-                try:
-                    mlflow.log_metric("retrieval_time_sec", retrieval_duration)
-                    mlflow.log_metric("llm_time_sec", llm_duration)
-                    mlflow.log_metric("total_time_sec", total_duration)
-                    mlflow.log_metric("mean_retrieval_score", avg_score)
-                    mlflow.log_metric("answer_length", len(answer))
-                    mlflow.log_metric("num_retrieved_docs", len(contexts))
-                    mlflow.log_metric("estimated_tokens", estimated_tokens)
-                    mlflow.end_run()
-                except Exception as e:
-                    logging.warning(f"Failed to log MLflow metrics: {e}")
+                # Log metrics to MLflow
+                if active_run:
+                    try:
+                        mlflow.log_metric("retrieval_time_sec", retrieval_duration)
+                        mlflow.log_metric("llm_time_sec", llm_duration)
+                        mlflow.log_metric("total_time_sec", total_duration)
+                        mlflow.log_metric("mean_retrieval_score", avg_score)
+                        mlflow.log_metric("answer_length", len(answer))
+                        mlflow.log_metric("num_retrieved_docs", len(contexts))
+                        mlflow.log_metric("estimated_tokens", estimated_tokens)
+                    except Exception as e:
+                        logging.warning(f"Failed to log MLflow metrics: {e}")
 
-            return {
-                "answer": answer,
-                "sources": sources,
-                "_meta": {
-                    "latency_sec": round(total_duration, 3),
-                    "num_docs": len(contexts),
-                    "avg_score": round(avg_score, 4),
-                },
-            }
+                return {
+                    "answer": answer,
+                    "sources": sources,
+                    "_meta": {
+                        "latency_sec": round(total_duration, 3),
+                        "num_docs": len(contexts),
+                        "avg_score": round(avg_score, 4),
+                        "estimated_tokens": estimated_tokens,
+                    },
+                }
+            finally:
+                if active_run and mlflow.active_run():
+                    try:
+                        mlflow.end_run()
+                    except Exception as e:
+                        logging.warning(f"Failed to end MLflow run: {e}")
 
         except Exception as e:
             raise CustomException(e, sys)
