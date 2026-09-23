@@ -38,7 +38,7 @@ class ModelEvaluatorConfig:
     output_dir: str = os.path.join("logs", "evaluation")
     results_file: str = os.path.join("logs", "evaluation", "evaluation_results.csv")
     mlflow_experiment: str = "RAG_Evaluation_Pipeline"
-    evaluator_model: str = "llama-3.3-70b-versatile"
+    evaluator_model: str = "llama-3.1-8b-instant"# "llama-3.3-70b-versatile"
     default_queries: List[str] = field(default_factory=lambda: [
         "What is the main topic of this document?",
         "Provide a summary of the key points.",
